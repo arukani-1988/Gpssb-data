@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg"><meta name="theme-color" content="#7a2f22">
+<title>GPSSB Exam Dashboard</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+:root{
+  --bg:#f3f1ea;
+  --surface:#ffffff;
+  --surface-2:#eae6da;
+  --ink:#1f2a24;
+  --muted:#5b6b62;
+  --border:#d8d3c3;
+  --accent:#8a2f1f;
+  --accent-ink:#ffffff;
+  --good:#2f6b4f;
+  --good-bg:#e3eee7;
+  --warn:#8a5a1f;
+  --warn-bg:#f3e8d4;
+  --crit:#8a2f1f;
+  --crit-bg:#f3e0dc;
+  --neutral-bg:#eae6da;
+  --font-display:'Fraunces',Georgia,'Noto Sans Gujarati',serif;
+  --font-body:'Noto Sans Gujarati','Source Sans 3',system-ui,sans-serif;
+  --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1b1d1a; --surface:#242722; --surface-2:#2d3029; --ink:#eceae2; --muted:#a3ab9e;
+    --border:#3c3f37; --accent:#e3775c; --accent-ink:#1b1d1a; --good:#7fcba3; --good-bg:#223229;
+    --warn:#e0b26a; --warn-bg:#352c1c; --crit:#e3775c; --crit-bg:#3a2521; --neutral-bg:#2d3029;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1b1d1a; --surface:#242722; --surface-2:#2d3029; --ink:#eceae2; --muted:#a3ab9e;
+  --border:#3c3f37; --accent:#e3775c; --accent-ink:#1b1d1a; --good:#7fcba3; --good-bg:#223229;
+  --warn:#e0b26a; --warn-bg:#352c1c; --crit:#e3775c; --crit-bg:#3a2521; --neutral-bg:#2d3029;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);height:100%}
+body{
+  font-family:var(--font-body); font-size:15px; line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left,0px));
+  padding-right:max(16px, env(safe-area-inset-right,0px));
+  display:flex; flex-direction:column;
+}
+h1,h2,h3{font-family:var(--font-display); text-wrap:balance; margin:0}
+.mono, .num{font-family:var(--font-mono); font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+
+.wrap{max-width:1100px;margin:0 auto;width:100%;padding-block:20px 48px;flex:1;min-width:0}
+
+header.page{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1.title{font-size:clamp(22px,3.6vw,32px);font-weight:600}
+.subtitle{color:var(--muted);font-size:14.5px;max-width:640px}
+.badge-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);font-size:12.5px;color:var(--muted);background:var(--surface)}
+.badge.accent{border-color:var(--accent);color:var(--accent);font-weight:600}
+
+/* Exam picker */
+.picker-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:12px}
+.picker-row label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+#exam-picker{flex:1;min-width:220px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:14px;font-weight:600}
+.exam-nav-btn,.back-btn{appearance:none;border:1px solid var(--border);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;font-family:var(--font-body)}
+.exam-nav-btn:hover,.back-btn:hover{background:var(--surface-2)}
+.back-btn{margin-bottom:14px;font-weight:600}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:22px;overflow-x:auto}
+.tab-btn{
+  appearance:none;border:none;background:none;cursor:pointer;
+  font-family:var(--font-body);font-size:13.5px;font-weight:600;color:var(--muted);
+  padding:9px 14px;border-bottom:2px solid transparent;white-space:nowrap;
+}
+.tab-btn:hover{color:var(--ink)}
+.tab-btn[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.panel{display:none}
+.panel.active{display:block}
+#exam-detail{display:none}
+#exam-detail.active{display:block}
+
+/* Summary tiles */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:24px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.tile .n{font-family:var(--font-mono);font-size:25px;font-weight:600;font-variant-numeric:tabular-nums}
+.tile .l{font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+.tile.accent{background:var(--accent);color:var(--accent-ink)}
+.tile.accent .l{color:var(--accent-ink);opacity:.85}
+
+section.block{margin-bottom:30px}
+.block h2{font-size:19px;font-weight:600;margin-bottom:4px}
+.block .hint{color:var(--muted);font-size:13px;margin-bottom:14px}
+.empty-note{color:var(--muted);font-size:13.5px;background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;padding:14px 16px}
+
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
+.fact{background:var(--surface);padding:12px 14px;min-width:0}
+.fact .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:3px}
+.fact .v{font-size:14.5px}
+
+.status-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:8px}
+.status-card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--surface);display:flex;flex-direction:column;gap:3px}
+.status-card .n{font-family:var(--font-mono);font-size:22px;font-weight:600}
+.status-card .l{font-size:12px;color:var(--muted)}
+
+/* Home: upcoming + stage accordion */
+.event-list{display:flex;flex-direction:column;gap:8px}
+.event-item{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer}
+.event-item:hover{background:var(--surface-2)}
+.event-item .ev-tag{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--accent);white-space:nowrap;min-width:150px}
+.event-item .ev-body{font-size:13.5px}
+.event-item .ev-exam{font-size:12px;color:var(--muted);margin-top:2px}
+
+.stage-accordion{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.stage-panel{border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
+.stage-panel > summary{list-style:none;cursor:pointer;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;font-family:var(--font-display);font-weight:600;font-size:16px}
+.stage-panel > summary::-webkit-details-marker{display:none}
+.stage-panel > summary .chev{transition:transform .15s;color:var(--muted);font-size:13px}
+.stage-panel[open] > summary .chev{transform:rotate(90deg)}
+.stage-count{font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--muted);background:var(--surface-2);border-radius:999px;padding:3px 10px}
+.stage-exam-list{display:flex;flex-direction:column}
+.stage-exam-row{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 16px;border-top:1px solid var(--border);cursor:pointer}
+.stage-exam-row:hover{background:var(--surface-2)}
+.stage-exam-row .se-name{font-size:13.5px}
+.stage-exam-row .se-no{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-right:8px}
+
+/* Tables */
+.table-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:560px}
+thead th{position:sticky;top:0;background:var(--surface-2);text-align:left;padding:9px 10px;font-size:11.5px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface);vertical-align:top}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:var(--surface-2)}
+tbody tr.total-row td{background:var(--surface-2);font-weight:600}
+td.num, th.num{text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+td.center, th.center{text-align:center}
+
+.cat-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:20px}
+.cat-summary .cs-card{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.cat-summary .cs-card .cs-n{font-family:var(--font-mono);font-weight:600;font-size:18px}
+
+.fill-cell{display:flex;flex-direction:column;align-items:flex-end;gap:3px;min-width:52px}
+.fill-cell .frac{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12.5px}
+.fill-track{width:100%;height:5px;border-radius:3px;background:var(--neutral-bg);overflow:hidden}
+.fill-bar{height:100%;border-radius:3px;background:var(--good)}
+.fill-bar.zero{background:var(--border)}
+.cat-legend-row{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.cat-chip{display:flex;flex-direction:column;gap:3px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface);flex:1;min-width:200px}
+.cat-chip .cat-head{display:flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px}
+.cat-dot{width:10px;height:10px;border-radius:3px;flex:none}
+.cat-chip .codes{font-family:var(--font-mono);font-size:11.5px;color:var(--muted)}
+.cat-chip .def{font-size:12px;color:var(--muted);line-height:1.4}
+.cat-chip .posts{font-size:11.5px;color:var(--muted)}
+
+.tl{display:flex;flex-direction:column}
+.tl-item{display:grid;grid-template-columns:96px 14px 1fr;gap:10px;position:relative}
+.tl-item .date{font-family:var(--font-mono);font-size:12px;color:var(--muted);padding-top:2px;white-space:nowrap}
+.tl-dot-col{display:flex;flex-direction:column;align-items:center}
+.tl-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:5px;flex:none}
+.tl-line{width:1px;flex:1;background:var(--border)}
+.tl-item:last-child .tl-line{display:none}
+.tl-body{padding-bottom:16px}
+.tl-label{font-size:14px;font-weight:600}
+.tl-file{font-size:12px;color:var(--muted);margin-top:2px}
+
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+input[type="search"]{flex:1;min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:13.5px}
+input[type="search"]:focus{outline:2px solid var(--accent);outline-offset:1px}
+select{padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--ink);font-family:var(--font-body);font-size:13.5px}
+.count-chip{font-size:12.5px;color:var(--muted);align-self:center;white-space:nowrap}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.pill.good{background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.crit{background:var(--crit-bg);color:var(--crit)}
+.pill.neutral{background:var(--neutral-bg);color:var(--muted)}
+
+footer.page{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
+
+@media (max-width:620px){ table{min-width:480px} }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Source+Sans+3:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Gujarati:wght@400;600&display=swap">
+
+<div class="wrap">
+  <header class="page">
+    <div class="eyebrow">Gujarat Panchayat Service Selection Board · All advertisements</div>
+    <h1 class="title">GPSSB Exam Dashboard</h1>
+  </header>
+
+  <div class="picker-row">
+    <label for="exam-picker">Exam</label>
+    <select id="exam-picker"><option value="">Select exam…</option></select>
+  </div>
+
+  <!-- HOME VIEW: shown when no exam is selected -->
+  <div id="home-view">
+    <section class="block" id="upcoming-block">
+      <h2>Upcoming events</h2>
+      <div class="hint">Upcoming written examinations, with dates taken from the official exam-schedule notices.</div>
+      <div class="event-list" id="upcoming-list"></div>
+    </section>
+
+    <section class="block">
+      <h2>All exams, by current stage</h2>
+      <div class="hint">Every advertisement sits in exactly one of these six stages, based on which documents GPSSB has published for it so far. Click an exam to open it.</div>
+      <div class="stage-accordion" id="stage-accordion"></div>
+    </section>
+  </div>
+
+  <!-- EXAM DETAIL VIEW -->
+  <div id="exam-detail">
+    <button class="back-btn" id="back-btn">&larr; Back to overview</button>
+    <header class="page">
+      <h1 class="title" id="exam-name"></h1>
+      <div class="subtitle" id="exam-sub"></div>
+      <div class="badge-row" id="badges"></div>
+    </header>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Exam record sections">
+      <button class="tab-btn" data-tab="overview" role="tab">Overview</button>
+      <button class="tab-btn" data-tab="vacancies" role="tab">Vacancies</button>
+      <button class="tab-btn" data-tab="timeline" role="tab">Timeline</button>
+      <button class="tab-btn" data-tab="merit" role="tab">Merit List</button>
+      <button class="tab-btn" data-tab="final" role="tab">Final Select List</button>
+    </nav>
+
+    <div class="panel" id="panel-overview">
+      <div class="tiles" id="tiles"></div>
+      <section class="block">
+        <h2>Eligibility &amp; exam structure</h2>
+        <div class="hint">Parsed from the detailed advertisement.</div>
+        <div class="facts" id="facts"></div>
+      </section>
+      <section class="block" id="edu-block">
+        <h2>Education qualification &amp; age relaxation</h2>
+        <div class="hint">Read from the English clauses of the advertisement (Rule 3) and its Gujarati relaxation table.</div>
+        <div id="edu-body"></div>
+      </section>
+      <section class="block" id="recon-block">
+        <h2>How the numbers reconcile</h2>
+        <div class="hint" id="recon-hint"></div>
+        <div class="status-grid" id="recon-grid"></div>
+      </section>
+      <section class="block" id="status-block">
+        <h2>Where merit-listed candidates stand</h2>
+        <div class="hint">Status of every candidate on the provisional merit list — see the Merit List tab for individual rows.</div>
+        <div class="status-grid" id="status-grid"></div>
+      </section>
+      <section class="block" id="checks-block">
+        <details>
+          <summary style="cursor:pointer;font-weight:600" id="checks-sum">Data checks</summary>
+          <div id="checks-body" style="margin-top:10px"></div>
+        </details>
+      </section>
+    </div>
+
+    <div class="panel" id="panel-vacancies">
+      <section class="block" id="cat-legend-block">
+        <h2>PwBD disability categories</h2>
+        <div class="hint" id="cat-legend-hint"></div>
+        <div class="cat-legend-row" id="cat-legend"></div>
+      </section>
+      <section class="block" id="vacancy-block">
+        <h2>Vacancies &amp; fill status by district</h2>
+        <div class="hint" id="vacancy-hint"></div>
+        <div class="table-scroll">
+          <table id="vacancy-table">
+            <thead><tr id="vacancy-head"></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="vac-recon"></div>
+      </section>
+    </div>
+
+    <div class="panel" id="panel-timeline">
+      <section class="block">
+        <h2>Document timeline</h2>
+        <div class="hint" id="timeline-hint"></div>
+        <div class="tl" id="timeline"></div>
+      </section>
+    </div>
+
+    <div class="panel" id="panel-merit">
+      <section class="block" id="merit-summary-block">
+        <h2>Selected so far, by category</h2>
+        <div class="hint">How many merit-listed candidates currently stand Selected &amp; Allotted, grouped by caste/disability category.</div>
+        <div class="cat-summary" id="merit-cat-summary"></div>
+      </section>
+      <section class="block" id="merit-table-block">
+        <h2>Provisional merit list</h2>
+        <div class="hint" id="merit-hint"></div>
+        <div class="controls">
+          <input type="search" id="merit-search" placeholder="Search name, roll no. or confirmation no.">
+          <select id="merit-category"><option value="">All categories</option></select>
+          <select id="merit-status"><option value="">All statuses</option></select>
+          <span class="count-chip" id="merit-count"></span>
+        </div>
+        <div class="table-scroll">
+          <table id="merit-table">
+            <thead><tr>
+              <th class="num">Sr. No.</th><th class="num">Merit #</th><th>List</th><th>Name</th><th>Roll No.</th><th>Confirmation No.</th>
+              <th>Birth Date</th><th>Gender</th><th>Category</th><th>PwBD Group</th>
+              <th class="num">Total Marks</th><th>Status</th><th>District Alloted</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="panel" id="panel-final">
+      <section class="block" id="final-summary-block">
+        <h2>Final selections by category</h2>
+        <div class="hint">How many candidates were allotted a district, grouped by selection category.</div>
+        <div class="cat-summary" id="final-cat-summary"></div>
+      </section>
+      <section class="block" id="final-table-block">
+        <h2>Final select list &amp; district allotment</h2>
+        <div class="hint" id="final-hint"></div>
+        <div class="controls">
+          <input type="search" id="final-search" placeholder="Search name, seat no. or district">
+          <select id="final-district"><option value="">All districts</option></select>
+          <span class="count-chip" id="final-count"></span>
+        </div>
+        <div class="table-scroll">
+          <table id="final-table">
+            <thead><tr>
+              <th class="num">Sr. No.</th><th class="num">Merit #</th><th>Name</th><th>Seat No.</th><th>Birth Date</th><th>Gender</th>
+              <th>Selection Cat.</th><th class="num">Final Marks</th><th>PwBD Cat.</th><th>Ex-Serv.</th><th>Status / District</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="page">
+    Parsed from PDFs published on gpssb.gujarat.gov.in. Source PDFs and this structured data are archived locally.
+    "Called after document verification" is the number stated in the district-allocation notice (and its attached list).
+    Counts were cross-checked against the lists; see "Data checks" on each exam's Overview.
+    <br><span id="synced"></span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ALL = null;
+  var CUR_ID = null;
+
+  function fmtMarks(v){ return (v === null || v === undefined) ? "—" : Number(v).toFixed(2); }
+  function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function fmtDate(iso){
+    if (!iso) return "—";
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+    return m ? (m[3] + "/" + m[2] + "/" + m[1]) : iso;
+  }
+  function catPill(cat){
+    if (!cat) return "—";
+    var c = String(cat).toUpperCase();
+    var cls = c.indexOf("GENERAL") >= 0 ? "good" : (c.indexOf("SC") >= 0 || c.indexOf("ST") >= 0) ? "warn" : "crit";
+    return '<span class="pill ' + cls + '">' + esc(cat) + '</span>';
+  }
+  function statusPill(status){
+    if (!status) return "—";
+    var cls = "neutral";
+    if (status.indexOf("Selected") >= 0) cls = "good";
+    else if (status.indexOf("Disqualified") >= 0 || status.indexOf("Not Eligible") >= 0 || status.indexOf("Absent") >= 0) cls = "crit";
+    else if (status.indexOf("Provisional") >= 0 || status.indexOf("Pending") >= 0 || status.indexOf("Not Yet") >= 0 || status.indexOf("Called") >= 0) cls = "warn";
+    else if (status.indexOf("Not Called") >= 0) cls = "neutral";
+    return '<span class="pill ' + cls + '">' + esc(status) + '</span>';
+  }
+
+  var TAB_IDS = ["overview", "vacancies", "timeline", "merit", "final"];
+  function parseHash(){
+    var h = location.hash.slice(1);
+    if (!h) return { id: null, tab: "overview" };
+    var parts = h.split("/");
+    return { id: parts[0] || null, tab: parts[1] || "overview" };
+  }
+  function setHash(id, tab){
+    var h = id ? (id + "/" + (tab || "overview")) : "";
+    if (location.hash.slice(1) !== h) location.hash = h;
+  }
+  function showTab(id){
+    if (TAB_IDS.indexOf(id) < 0) id = "overview";
+    TAB_IDS.forEach(function(t){
+      document.getElementById("panel-" + t).classList.toggle("active", t === id);
+      var btn = document.querySelector('.tab-btn[data-tab="' + t + '"]');
+      btn.setAttribute("aria-selected", t === id ? "true" : "false");
+    });
+  }
+  document.getElementById("tabs").addEventListener("click", function(e){
+    var btn = e.target.closest(".tab-btn");
+    if (!btn) return;
+    setHash(CUR_ID, btn.dataset.tab);
+    showTab(btn.dataset.tab);
+  });
+  document.getElementById("back-btn").addEventListener("click", function(){
+    CUR_ID = null;
+    document.getElementById("exam-picker").value = "";
+    location.hash = "";
+    showHome();
+  });
+  window.addEventListener("hashchange", function(){
+    var p = parseHash();
+    if (!p.id) { CUR_ID = null; document.getElementById("exam-picker").value = ""; showHome(); return; }
+    if (p.id !== CUR_ID) selectExam(p.id);
+    showTab(p.tab);
+  });
+
+  function showHome(){
+    document.getElementById("home-view").style.display = "";
+    document.getElementById("exam-detail").classList.remove("active");
+  }
+  function showDetail(){
+    document.getElementById("home-view").style.display = "none";
+    document.getElementById("exam-detail").classList.add("active");
+  }
+
+  function examSortKey(e){
+    var m = /^(\d+)\/(\d{4})/.exec(e.advt_no || "");
+    return m ? [parseInt(m[2],10), parseInt(m[1],10)] : [9999, 0];
+  }
+
+  function buildPicker(){
+    var list = ALL.exam_list.slice().sort(function(a,b){
+      var ka = examSortKey(a), kb = examSortKey(b);
+      return ka[0]-kb[0] || ka[1]-kb[1];
+    });
+    var sel = document.getElementById("exam-picker");
+    list.forEach(function(e){
+      var o = document.createElement("option");
+      o.value = e.advt_id;
+      o.textContent = "ADVT " + e.advt_no + " — " + e.exam_name + " (" + e.stage + ")";
+      sel.appendChild(o);
+    });
+    sel.addEventListener("change", function(){
+      if (!sel.value){ CUR_ID = null; location.hash = ""; showHome(); return; }
+      setHash(sel.value, "overview");
+      selectExam(sel.value);
+    });
+  }
+
+  function goToExam(id, tab){
+    document.getElementById("exam-picker").value = id;
+    setHash(id, tab || "overview");
+    selectExam(id);
+    showTab(tab || "overview");
+  }
+
+  function renderUpcoming(){
+    var items = ALL.upcoming_events || [];
+    var box = document.getElementById("upcoming-list");
+    if (!items.length){
+      box.innerHTML = '<div class="empty-note">No upcoming events.</div>';
+      return;
+    }
+    box.innerHTML = items.map(function(it){
+      return '<div class="event-item" data-id="' + it.advt_id + '">' +
+        '<div class="ev-tag">' + fmtDate(it.event_date) + ' (Sunday)</div>' +
+        '<div class="ev-body">ADVT ' + esc(it.advt_no) + ' — ' + esc(it.title) +
+          '<div class="ev-exam">' + esc(it.event) + '</div>' +
+        '</div></div>';
+    }).join("");
+    box.querySelectorAll(".event-item").forEach(function(el){
+      el.addEventListener("click", function(){ goToExam(el.dataset.id, "overview"); });
+    });
+  }
+
+  function renderStageAccordion(){
+    var box = document.getElementById("stage-accordion");
+    box.innerHTML = ALL.stage_order.map(function(stage, i){
+      var exams = ALL.exam_list.filter(function(e){ return e.stage === stage; });
+      var rows = exams.map(function(e){
+        return '<div class="stage-exam-row" data-id="' + e.advt_id + '">' +
+          '<span class="se-name"><span class="se-no">ADVT ' + esc(e.advt_no) + '</span>' + esc(e.exam_name) + '</span>' +
+          '<span class="pill neutral">' + (e.final_selected_count ?? e.merit_list_count ?? e.total_posts ?? "—") + '</span>' +
+        '</div>';
+      }).join("") || '<div class="stage-exam-row"><span class="se-name" style="color:var(--muted)">No exams currently at this stage.</span></div>';
+      return '<details class="stage-panel">' +
+        '<summary>' + (i+1) + '. ' + esc(stage) + ' <span style="display:flex;align-items:center;gap:8px"><span class="stage-count">' + exams.length + ' exam' + (exams.length===1?'':'s') + '</span><span class="chev">&#9654;</span></span></summary>' +
+        '<div class="stage-exam-list">' + rows + '</div>' +
+      '</details>';
+    }).join("");
+    box.querySelectorAll(".stage-exam-row[data-id]").forEach(function(el){
+      el.addEventListener("click", function(){ goToExam(el.dataset.id, "overview"); });
+    });
+  }
+
+  function renderCatSummary(elId, rows, total){
+    var el = document.getElementById(elId);
+    if (!rows || !rows.length){
+      el.innerHTML = '<div class="empty-note">Not available — this list has not been published yet, or its column layout was not recognized by the parser.</div>';
+      return;
+    }
+    el.innerHTML = rows.map(function(r){
+      return '<div class="cs-card"><span>' + catPill(r.category) + '</span><span class="cs-n">' + r.count + '</span></div>';
+    }).join("") + '<div class="cs-card" style="background:var(--surface-2)"><span><strong>Total</strong></span><span class="cs-n">' + total + '</span></div>';
+  }
+
+  function selectExam(id){
+    var bundle = ALL.exams[id];
+    if (!bundle) return;
+    CUR_ID = id;
+    showDetail();
+    document.getElementById("exam-picker").value = id;
+    var exam = bundle.exam;
+
+    document.getElementById("exam-name").textContent = "ADVT " + exam.advt_no + " — " + exam.exam_name;
+    document.getElementById("exam-sub").textContent = exam.recruitment_type || "";
+
+    var badges = ['<span class="badge accent">' + esc(exam.stage) + '</span>'];
+    if (exam.total_posts) badges.push('<span class="badge">' + exam.total_posts + ' posts</span>');
+    if (exam.application_start) badges.push('<span class="badge">' + exam.application_start + ' – ' + exam.application_end + ' (applications)</span>');
+    if (exam.age_min) badges.push('<span class="badge">Age ' + exam.age_min + '–' + exam.age_max + ' yrs</span>');
+    if (exam.min_qualifying_pct) badges.push('<span class="badge">Min. qualifying ' + exam.min_qualifying_pct + '%</span>');
+    document.getElementById("badges").innerHTML = badges.join("");
+
+    var tiles = [
+      { n: exam.total_posts, l: "Total posts" },
+      { n: exam.merit_list_count, l: "On merit lists" + (exam.merit_additional_count ? " (" + exam.merit_provisional_count + " provisional + " + exam.merit_additional_count + " additional)" : "") },
+      { n: exam.called_for_allocation_count, l: "Called after document verification" },
+      { n: exam.final_selected_count, l: "Final selected & recommended" },
+      { n: exam.allotted_count, l: "Allotted a district" },
+      { n: exam.not_eligible_count, l: "Not eligible / disqualified at verification" },
+    ];
+    document.getElementById("tiles").innerHTML = tiles.map(function(t, i){
+      return '<div class="tile' + (i===0?' accent':'') + '"><span class="n">' + (t.n ?? "—") + '</span><span class="l">' + t.l + '</span></div>';
+    }).join("");
+
+    var facts = [
+      ["Age limit", exam.age_max ? ((exam.age_min ? exam.age_min : "18") + "–" + exam.age_max + " years" + (exam.age_min ? "" : " (upper limit as stated)")) : "—"],
+      ["Total marks / duration", (exam.total_marks && exam.exam_duration_minutes) ? (exam.total_marks + " marks in " + exam.exam_duration_minutes + " minutes") : (exam.total_marks ? exam.total_marks + " marks" : (exam.exam_duration_minutes ? exam.exam_duration_minutes + " minutes" : "—"))],
+      ["Minimum qualifying standard", exam.mqs_note ? "Board-fixed category-wise; never below 40%" : "—"],
+      ["Application window", exam.application_start ? (exam.application_start + " to " + exam.application_end) : "—"],
+      ["Recruitment type", exam.recruitment_type || "—"],
+      ["Current stage", exam.stage || "—"],
+    ];
+    document.getElementById("facts").innerHTML = facts.map(function(f){
+      return '<div class="fact"><div class="k">' + esc(f[0]) + '</div><div class="v">' + esc(f[1]) + '</div></div>';
+    }).join("");
+
+    var edu = '<div class="fact" style="margin-bottom:10px"><div class="k">Education qualification</div><div class="v" style="font-weight:400">' +
+      esc(exam.education || "Not found in the parsed advertisement — see the source PDF.") + '</div>';
+    if ((exam.education_extra || []).length) edu += '<ul style="margin:8px 0 0 18px">' + exam.education_extra.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join("") + '</ul>';
+    edu += '</div>';
+    var rel = exam.age_relaxation || [];
+    edu += '<div class="fact"><div class="k">Upper age-limit relaxation</div>';
+    if (rel.length){
+      edu += '<div class="table-scroll"><table><thead><tr><th>Category</th><th class="num">Relaxation</th></tr></thead><tbody>' +
+        rel.map(function(r){ return '<tr><td>' + esc(r.group) + '</td><td class="num">' + (r.years ? r.years + ' years' : esc(r.note || "—")) + '</td></tr>'; }).join("") +
+        '</tbody></table></div><div class="hint">Relaxed age can never exceed 45 years in any case.</div>';
+    } else edu += '<div class="v" style="font-weight:400">Table layout not recognised for this advertisement — see the source PDF (para on “વયમર્યાદામાં છૂટછાટ”).</div>';
+    edu += '</div>';
+    document.getElementById("edu-body").innerHTML = edu;
+
+    var rc = [];
+    if (exam.final_selected_count){
+      rc.push(["Called after verification", exam.called_for_allocation_count]);
+      rc.push(["Final list (selected & recommended)", exam.final_selected_count]);
+      rc.push(["— Allotted a district", exam.allotted_count]);
+      rc.push(["— Provisionally allotted, district not given", exam.pending_count]);
+      rc.push(["— Absent at allocation", exam.absent_count]);
+      rc.push(["Not eligible at verification", exam.not_eligible_count || 0]);
+      document.getElementById("recon-hint").textContent = "Vacancies ‘Total Filled’ counts only the candidates allotted a district; provisionally allotted candidates (district not yet given) and absent candidates are not counted as filled — see the reconciliation under the Vacancies table.";
+    }
+    document.getElementById("recon-block").style.display = rc.length ? "" : "none";
+    document.getElementById("recon-grid").innerHTML = rc.map(function(r){
+      return '<div class="status-card"><span>' + esc(r[0]) + '</span><span class="n">' + (r[1] ?? "—") + '</span></div>';
+    }).join("");
+
+    var cks = bundle.checks || [];
+    var bad = cks.filter(function(c){ return c.status !== "ok"; });
+    document.getElementById("checks-sum").textContent = "Data checks — " + (cks.length - bad.length) + " passed" + (bad.length ? ", " + bad.length + " need attention" : "");
+    document.getElementById("checks-body").innerHTML = '<table><thead><tr><th>Stage</th><th>Check</th><th>Result</th><th>Detail</th></tr></thead><tbody>' +
+      cks.map(function(c){ return '<tr><td>' + esc(ALL.stage_order[c.stage]) + '</td><td>' + esc(c.check) + '</td><td><span class="pill ' + (c.status==="ok"?"good":(c.status==="warn"?"warn":"crit")) + '">' + c.status + '</span></td><td>' + esc(c.detail) + '</td></tr>'; }).join("") + '</tbody></table>';
+
+    var statusBlock = document.getElementById("status-block");
+    if (bundle.merit_list.length){
+      statusBlock.style.display = "";
+      var statusCounts = {};
+      bundle.merit_list.forEach(function(r){ statusCounts[r.status] = (statusCounts[r.status] || 0) + 1; });
+      var statusOrder = [
+        "Selected & Allotted", "Provisionally Allotted (District Pending)", "Absent at Allocation", "Not Eligible at Verification",
+        "Called – Not in Final List", "Not Called for Allocation", "Result Not Yet Published",
+      ];
+      document.getElementById("status-grid").innerHTML = statusOrder.filter(function(s){ return statusCounts[s]; }).map(function(s){
+        return '<div class="status-card">' + statusPill(s) + '<span class="n">' + statusCounts[s] + '</span><span class="l">candidates</span></div>';
+      }).join("");
+    } else {
+      statusBlock.style.display = "none";
+    }
+
+    renderVacancies(bundle, exam);
+
+    document.getElementById("timeline-hint").textContent =
+      bundle.timeline.length + " documents published for this advertisement, from " +
+      fmtDate(bundle.timeline[0].event_date) + " to " + fmtDate(bundle.timeline[bundle.timeline.length - 1].event_date) + ".";
+    document.getElementById("timeline").innerHTML = bundle.timeline.map(function(t){
+      return '<div class="tl-item">' +
+        '<div class="date">' + fmtDate(t.event_date) + '</div>' +
+        '<div class="tl-dot-col"><div class="tl-dot"></div><div class="tl-line"></div></div>' +
+        '<div class="tl-body"><div class="tl-label">' + esc(t.label) + '</div>' +
+          '<div class="tl-file">' + esc(t.file) + '</div></div>' +
+      '</div>';
+    }).join("");
+
+    renderCatSummary("merit-cat-summary", bundle.merit_category_summary, exam.merit_list_count || 0);
+    document.getElementById("merit-hint").textContent = bundle.merit_list.length
+      ? (bundle.merit_list.length + " candidates on the merit lists" + (exam.merit_additional_count ? " (" + exam.merit_provisional_count + " provisional + " + exam.merit_additional_count + " additional)" : "") + ". Sr. No. is the row number in the PDF; Merit # is the provisional merit-list number.")
+      : "No merit list has been parsed for this exam yet (either not published, or its column layout differs from the one this parser recognizes).";
+    var meritCatSel = document.getElementById("merit-category");
+    var meritStatusSel = document.getElementById("merit-status");
+    meritCatSel.innerHTML = '<option value="">All categories</option>';
+    meritStatusSel.innerHTML = '<option value="">All statuses</option>';
+    Array.from(new Set(bundle.merit_list.map(function(r){ return r.caste_category; }))).sort().forEach(function(c){
+      var o = document.createElement("option"); o.value = c; o.textContent = c; meritCatSel.appendChild(o);
+    });
+    Array.from(new Set(bundle.merit_list.map(function(r){ return r.status; }))).forEach(function(s){
+      var o = document.createElement("option"); o.value = s; o.textContent = s; meritStatusSel.appendChild(o);
+    });
+    function renderMerit(){
+      var q = document.getElementById("merit-search").value.trim().toLowerCase();
+      var cat = meritCatSel.value, status = meritStatusSel.value;
+      var rows = bundle.merit_list.filter(function(r){
+        if (cat && r.caste_category !== cat) return false;
+        if (status && r.status !== status) return false;
+        if (!q) return true;
+        return (r.name + " " + r.roll_no + " " + r.confirmation_no).toLowerCase().indexOf(q) >= 0;
+      });
+      document.getElementById("merit-count").textContent = rows.length + " of " + bundle.merit_list.length;
+      document.querySelector("#merit-table tbody").innerHTML = rows.map(function(r){
+        return '<tr><td class="num">' + r.sr_no + '</td><td class="num">' + (r.merit_no ?? r.sr_no) + '</td><td>' + esc(r.list_type || "") + '</td><td>' + esc(r.name) + '</td><td class="mono">' + esc(r.roll_no) +
+          '</td><td class="mono">' + esc(r.confirmation_no) + '</td><td class="mono">' + esc(r.birth_date) +
+          '</td><td>' + esc(r.gender) + '</td><td>' + catPill(r.caste_category) + '</td><td>' + esc(r.pwbd_group) +
+          '</td><td class="num">' + fmtMarks(r.total_marks) + '</td><td>' + statusPill(r.status) +
+          '</td><td>' + esc(r.allotted_district || "—") + '</td></tr>';
+      }).join("") || '<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:20px">No matching candidates.</td></tr>';
+    }
+    meritCatSel.onchange = renderMerit; meritStatusSel.onchange = renderMerit;
+    document.getElementById("merit-search").oninput = renderMerit;
+    document.getElementById("merit-search").value = "";
+    renderMerit();
+
+    renderCatSummary("final-cat-summary", bundle.final_category_summary, exam.allotted_count || 0);
+    document.getElementById("final-hint").textContent = bundle.final_select.length
+      ? (bundle.final_select.length + " candidates on the final select list (" + (exam.allotted_count||0) + " allotted, " + (exam.pending_count||0) + " provisionally allotted (district not given), " + (exam.absent_count||0) + " absent). The category summary above counts allotted candidates.")
+      : "No final select list has been parsed for this exam yet.";
+    var distSel = document.getElementById("final-district");
+    distSel.innerHTML = '<option value="">All districts</option>';
+    Array.from(new Set(bundle.final_select.map(function(r){ return r.district_alloted; }).filter(Boolean))).sort().forEach(function(d){
+      var o = document.createElement("option"); o.value = d; o.textContent = d; distSel.appendChild(o);
+    });
+    function renderFinal(){
+      var q = document.getElementById("final-search").value.trim().toLowerCase();
+      var dist = distSel.value;
+      var rows = bundle.final_select.filter(function(r){
+        if (dist && r.district_alloted !== dist) return false;
+        if (!q) return true;
+        return (r.name + " " + r.seat_no + " " + (r.district_alloted || "")).toLowerCase().indexOf(q) >= 0;
+      });
+      document.getElementById("final-count").textContent = rows.length + " of " + bundle.final_select.length;
+      document.querySelector("#final-table tbody").innerHTML = rows.map(function(r){
+        var statusCell = r.district_alloted
+          ? statusPill("Selected & Allotted") + ' <span class="mono" style="font-size:12px">' + esc(r.district_alloted) + '</span>'
+          : statusPill(r.status) + ' <span style="font-size:12px;color:var(--muted)">' + (r.remark ? '(' + esc(r.remark) + ')' : '') + '</span>';
+        return '<tr><td class="num">' + r.sr_no + '</td><td class="num">' + r.final_merit_no + '</td><td>' + esc(r.name) + '</td><td class="mono">' + esc(r.seat_no) +
+          '</td><td class="mono">' + esc(r.birth_date) + '</td><td>' + esc(r.gender) + '</td><td>' + catPill(r.selection_category) +
+          '</td><td class="num">' + fmtMarks(r.final_marks) + '</td><td>' + esc(r.pwbd_category || "—") +
+          '</td><td>' + esc(r.ex_serviceman || "—") + '</td><td>' + statusCell + '</td></tr>';
+      }).join("") || '<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:20px">No matching candidates.</td></tr>';
+    }
+    distSel.onchange = renderFinal;
+    document.getElementById("final-search").oninput = renderFinal;
+    document.getElementById("final-search").value = "";
+    renderFinal();
+  }
+
+  function fillCell(allotted, reserved){
+    if (reserved === null || reserved === undefined) return '<span style="color:var(--muted)">—</span>';
+    var pct = reserved ? Math.min(100, (allotted / reserved) * 100) : 0;
+    return '<div class="fill-cell">' +
+      '<span class="frac">' + allotted + ' / ' + reserved + '</span>' +
+      '<div class="fill-track"><div class="fill-bar' + (pct === 0 ? ' zero' : '') + '" style="width:' + pct + '%"></div></div>' +
+    '</div>';
+  }
+
+  function renderVacancies(bundle, exam){
+    vacRecon(bundle, exam);
+    var legendBlock = document.getElementById("cat-legend-block");
+    var head = document.getElementById("vacancy-head");
+    var body = document.querySelector("#vacancy-table tbody");
+
+    if (exam.vacancy_category_type === "disability" && bundle.districts.length){
+      legendBlock.style.display = "";
+      document.getElementById("cat-legend-hint").innerHTML =
+        'This is a <strong>Special Recruitment Drive (SRD) for PwBD</strong> candidates, so posts are reserved entirely by <strong>disability</strong> category, not caste.';
+      var colors = ["var(--accent)", "#c98a5a", "var(--good)", "var(--muted)"];
+      document.getElementById("cat-legend").innerHTML = bundle.disability_categories.map(function(c, i){
+        return '<div class="cat-chip">' +
+          '<div class="cat-head"><span class="cat-dot" style="background:' + colors[i%4] + '"></span>Category ' + esc(c.category) +
+            (c.posts !== null && c.posts !== undefined ? ' · ' + c.posts + ' posts' : ' · posts not stated here') + '</div>' +
+          '<div class="codes">' + esc(c.codes) + '</div>' +
+          '<div class="def">' + esc(c.definition) + '</div>' +
+        '</div>';
+      }).join("");
+
+      head.innerHTML = '<th>District</th><th class="num">Total Posts</th><th class="num">Total Filled</th>' +
+        '<th class="center">A</th><th class="center">B</th><th class="center">C</th><th class="center">D&amp;E</th>';
+      document.getElementById("vacancy-hint").textContent =
+        (exam.total_posts || "—") + " posts across " + bundle.districts.length + " districts, reserved by disability category A/B/C/D&E. " +
+        "“Total Filled” sums every category for that district.";
+
+      var totalPosts = 0, totalFilled = 0, T = {a:[0,0], b:[0,0], c:[0,0], de:[0,0]};
+      var bodyRows = bundle.districts.map(function(d){
+        totalPosts += d.total_posts; totalFilled += d.total_filled;
+        T.a[0]+=d.filled_a; T.a[1]+=d.cat_a; T.b[0]+=d.filled_b; T.b[1]+=d.cat_b;
+        T.c[0]+=d.filled_c; T.c[1]+=d.cat_c; T.de[0]+=d.filled_de; T.de[1]+=d.cat_de;
+        return '<tr><td>' + esc(d.district) + '</td><td class="num">' + d.total_posts +
+          '</td><td class="num"><strong>' + d.total_filled + '</strong></td>' +
+          '<td>' + fillCell(d.filled_a, d.cat_a) + '</td><td>' + fillCell(d.filled_b, d.cat_b) +
+          '</td><td>' + fillCell(d.filled_c, d.cat_c) + '</td><td>' + fillCell(d.filled_de, d.cat_de) + '</td></tr>';
+      }).join("");
+      bodyRows += '<tr class="total-row"><td><strong>TOTAL</strong></td><td class="num"><strong>' + totalPosts +
+        '</strong></td><td class="num"><strong>' + totalFilled + '</strong></td>' +
+        ['a','b','c','de'].map(function(k){ return '<td class="center"><strong>' + T[k][0] + ' / ' + T[k][1] + '</strong></td>'; }).join("") + '</tr>';
+      body.innerHTML = bodyRows;
+
+    } else if (exam.vacancy_category_type === "caste" && bundle.districts.length){
+      legendBlock.style.display = "";
+      document.getElementById("cat-legend-hint").innerHTML =
+        'This is a <strong>regular (non-SRD) recruitment</strong>: posts are reserved by <strong>caste category</strong> ' +
+        '(General/EWS/SEBC/SC/ST) plus an ex-serviceman reservation, each of them further cross-cut horizontally by a ' +
+        '<strong>PwBD disability</strong> sub-reservation (categories A–D&amp;E below, defined the same way as in the SRD exams).';
+      var colors2 = ["var(--accent)", "#c98a5a", "var(--good)", "var(--muted)"];
+      document.getElementById("cat-legend").innerHTML = bundle.disability_categories.map(function(c, i){
+        return '<div class="cat-chip">' +
+          '<div class="cat-head"><span class="cat-dot" style="background:' + colors2[i%4] + '"></span>Category ' + esc(c.category) + '</div>' +
+          '<div class="codes">' + esc(c.codes) + '</div>' +
+          '<div class="def">' + esc(c.definition) + '</div>' +
+        '</div>';
+      }).join("");
+
+      head.innerHTML = '<th>District</th><th class="num">Total Posts</th><th class="num">Total Filled</th>' +
+        '<th class="num">General</th><th class="num">EWS</th><th class="num">SEBC</th><th class="num">SC</th>' +
+        '<th class="num">ST</th><th class="num">Ex-Serviceman</th>' +
+        '<th class="center">PwBD-A</th><th class="center">PwBD-B</th><th class="center">PwBD-C</th><th class="center">PwBD-D&amp;E</th>';
+      document.getElementById("vacancy-hint").innerHTML =
+        (exam.total_posts || "—") + " posts across " + bundle.districts.length + " districts. The PwBD-A…D&amp;E columns on the right are a " +
+        "<em>cross-cutting</em> sub-reservation within the caste totals to their left, not additional posts. " +
+        "“Total Filled” here sums the caste columns (General+EWS+SEBC+SC+ST) actually allotted so far.";
+
+      var tp=0, tf=0, C={general:[0,0],ews:[0,0],sebc:[0,0],sc:[0,0],st:[0,0]}, tex=0, P={a:[0,0],b:[0,0],c:[0,0],de:[0,0]};
+      var rows2 = bundle.districts.map(function(d){
+        tp+=d.total_posts; tf+=(d.total_filled||0); tex+=(d.ex_serviceman||0);
+        ["general","ews","sebc","sc","st"].forEach(function(k){ C[k][0]+=(d["filled_"+k]||0); C[k][1]+=(d[k]||0); });
+        P.a[0]+=d.filled_a; P.a[1]+=d.cat_a; P.b[0]+=d.filled_b; P.b[1]+=d.cat_b; P.c[0]+=d.filled_c; P.c[1]+=d.cat_c; P.de[0]+=d.filled_de; P.de[1]+=d.cat_de;
+        return '<tr><td>' + esc(d.district) + '</td><td class="num">' + d.total_posts +
+          '</td><td class="num"><strong>' + (d.total_filled||0) + '</strong></td>' +
+          '<td class="num">' + fillPair(d.filled_general, d.general) + '</td>' +
+          '<td class="num">' + fillPair(d.filled_ews, d.ews) + '</td>' +
+          '<td class="num">' + fillPair(d.filled_sebc, d.sebc) + '</td>' +
+          '<td class="num">' + fillPair(d.filled_sc, d.sc) + '</td>' +
+          '<td class="num">' + fillPair(d.filled_st, d.st) + '</td>' +
+          '<td class="num">' + (d.ex_serviceman ?? "—") + '</td>' +
+          '<td>' + fillCell(d.filled_a, d.cat_a) + '</td><td>' + fillCell(d.filled_b, d.cat_b) +
+          '</td><td>' + fillCell(d.filled_c, d.cat_c) + '</td><td>' + fillCell(d.filled_de, d.cat_de) + '</td></tr>';
+      }).join("");
+      rows2 += '<tr class="total-row"><td><strong>TOTAL</strong></td><td class="num"><strong>' + tp + '</strong></td><td class="num"><strong>' + tf + '</strong></td>' +
+        ["general","ews","sebc","sc","st"].map(function(k){ return '<td class="num"><strong>' + C[k][0] + ' / ' + C[k][1] + '</strong></td>'; }).join("") +
+        '<td class="num"><strong>' + tex + '</strong></td>' +
+        ["a","b","c","de"].map(function(k){ return '<td class="center"><strong>' + P[k][0] + ' / ' + P[k][1] + '</strong></td>'; }).join("") + '</tr>';
+      body.innerHTML = rows2;
+
+    } else {
+      legendBlock.style.display = "none";
+      document.getElementById("vacancy-hint").textContent = "";
+      head.innerHTML = '<th>Status</th>';
+      body.innerHTML = '<tr><td><div class="empty-note">No district vacancy table could be parsed for this exam yet — its detailed advertisement may not be available, or its table layout was not recognized.</div></td></tr>';
+    }
+  }
+  function vacRecon(bundle, exam){
+    var el = document.getElementById("vac-recon");
+    if (!exam.final_selected_count){ el.innerHTML = ""; return; }
+    var prov = bundle.final_select.filter(function(r){ return r.status === "Provisionally Allotted (District Pending)"; });
+    var abs = bundle.final_select.filter(function(r){ return r.status === "Absent at Allocation"; });
+    var sum = (exam.allotted_count||0) + prov.length + abs.length;
+    var h = '<div class="hint" style="margin-top:14px"><strong>Reconciliation with the final select list:</strong> ' + exam.final_selected_count + ' selected &amp; recommended = ' +
+      (exam.allotted_count||0) + ' filled (district allotted) + ' + prov.length + ' provisionally allotted, district not given' +
+      (abs.length ? ' + ' + abs.length + ' absent at allocation' : '') + (sum === exam.final_selected_count ? '.' : ' (does not add up — check data).') + '</div>';
+    if (prov.length){
+      h += '<div class="table-scroll"><table><thead><tr><th class="num">Sr. No.</th><th>Name</th><th>Selection Cat.</th><th>PwBD</th><th>Remark</th></tr></thead><tbody>' +
+        prov.map(function(r){ return '<tr><td class="num">' + r.sr_no + '</td><td>' + esc(r.name) + '</td><td>' + esc(r.selection_category) + '</td><td>' + esc(r.pwbd_category || "—") + '</td><td>' + esc(r.remark || "") + '</td></tr>'; }).join("") + '</tbody></table></div>';
+    }
+    el.innerHTML = h;
+  }
+  function fillPair(filled, reserved){
+    if (filled === null || filled === undefined) filled = 0;
+    if (reserved === null || reserved === undefined) return filled + " / —";
+    return filled + " / " + reserved;
+  }
+
+  fetch("data.json").then(function(r){ return r.json(); }).then(function(data){
+    ALL = data;
+    if (ALL.generated_at){ var sy = document.getElementById("synced"); if (sy) sy.textContent = "Data last synced: " + ALL.generated_at.replace("T", " ").slice(0, 16); }
+    buildPicker();
+    renderUpcoming();
+    renderStageAccordion();
+    var p = parseHash();
+    if (p.id && ALL.exams[p.id]) { selectExam(p.id); showTab(p.tab); }
+    else { showHome(); }
+  }).catch(function(e){
+    document.querySelector(".title").textContent = "Could not load data.json";
+    console.error(e);
+  });
+})();
+</script>
+
+</body></html>
